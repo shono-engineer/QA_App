@@ -3,6 +3,7 @@ package jp.techacademy.shono.iso.qa_app
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.ListView
 import androidx.appcompat.app.AppCompatActivity
 
@@ -14,6 +15,7 @@ import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.database.FirebaseDatabase
 import kotlinx.android.synthetic.main.activity_question_detail.*
+import kotlinx.android.synthetic.main.list_question_detail.*
 
 import java.util.HashMap
 
@@ -22,8 +24,9 @@ class QuestionDetailActivity : AppCompatActivity() {
     private lateinit var mQuestion: Question
     private lateinit var mAdapter: QuestionDetailListAdapter
     private lateinit var mAnswerRef: DatabaseReference
+    private lateinit var mFavoriteRef: DatabaseReference
 
-    private val mEventListener = object : ChildEventListener {
+    private val mAnswerEventListener = object : ChildEventListener {
         override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
             val map = dataSnapshot.value as Map<String, String>
 
@@ -62,6 +65,36 @@ class QuestionDetailActivity : AppCompatActivity() {
         }
     }
 
+    private val mFavoriteEventListener = object : ChildEventListener {
+        override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
+            if(dataSnapshot.key != mQuestion.questionUid) {
+                return
+            }
+            mQuestion.isFavorite = true
+            mAdapter.notifyDataSetChanged()
+        }
+
+        override fun onChildChanged(dataSnapshot: DataSnapshot, s: String?) {
+
+        }
+
+        override fun onChildRemoved(dataSnapshot: DataSnapshot) {
+            if(dataSnapshot.key != mQuestion.questionUid) {
+                return
+            }
+            mQuestion.isFavorite = false
+            mAdapter.notifyDataSetChanged()
+        }
+
+        override fun onChildMoved(dataSnapshot: DataSnapshot, s: String?) {
+
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_question_detail)
@@ -77,10 +110,10 @@ class QuestionDetailActivity : AppCompatActivity() {
         listView.adapter = mAdapter
         mAdapter.notifyDataSetChanged()
 
-        fab.setOnClickListener {
-            // ログイン済みのユーザーを取得する
-            val user = FirebaseAuth.getInstance().currentUser
+        // ログイン済みのユーザーを取得する
+        val user = FirebaseAuth.getInstance().currentUser
 
+        fab.setOnClickListener {
             if (user == null) {
                 // ログインしていなければログイン画面に遷移させる
                 val intent = Intent(applicationContext, LoginActivity::class.java)
@@ -95,6 +128,14 @@ class QuestionDetailActivity : AppCompatActivity() {
 
         val dataBaseReference = FirebaseDatabase.getInstance().reference
         mAnswerRef = dataBaseReference.child(ContentsPATH).child(mQuestion.genre.toString()).child(mQuestion.questionUid).child(AnswersPATH)
-        mAnswerRef.addChildEventListener(mEventListener)
+        mAnswerRef.addChildEventListener(mAnswerEventListener)
+
+        if (user != null) {
+            mQuestion.isLogin = true
+            mFavoriteRef = dataBaseReference.child(UsersPATH).child(user.uid).child("favorite")
+            mFavoriteRef.addChildEventListener(mFavoriteEventListener)
+        } else {
+            mQuestion.isLogin = false
+        }
     }
 }

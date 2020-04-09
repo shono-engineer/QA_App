@@ -7,8 +7,11 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.BaseAdapter
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
 
 class QuestionDetailListAdapter(context: Context, private val mQustion: Question) : BaseAdapter() {
     companion object {
@@ -68,6 +71,30 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
                 val imageView = convertView.findViewById<View>(R.id.imageView) as ImageView
                 imageView.setImageBitmap(image)
             }
+
+            // ログイン済みのユーザーを取得する
+            val favbtn = convertView.findViewById<Button>(R.id.favoriteButton) as Button
+            if (mQustion.isLogin) {
+                val user = FirebaseAuth.getInstance().currentUser
+                val dataBaseReference = FirebaseDatabase.getInstance().reference
+                favbtn.setOnClickListener {
+                    if (!mQustion.isFavorite) {
+                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite").child(mQustion.questionUid).setValue("test")
+                    } else {
+                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite").child(mQustion.questionUid).removeValue()
+                    }
+                }
+                if (mQustion.isFavorite) {
+                    favbtn.text = "済"
+                } else {
+                    favbtn.text = "お気に入り"
+                }
+            } else {
+                favbtn.visibility = View.GONE
+            }
+
+
+
         } else {
             if (convertView == null) {
                 convertView = mLayoutInflater!!.inflate(R.layout.list_answer, parent, false)!!
