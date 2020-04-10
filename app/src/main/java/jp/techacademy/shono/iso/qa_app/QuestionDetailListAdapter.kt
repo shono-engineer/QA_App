@@ -3,6 +3,7 @@ package jp.techacademy.shono.iso.qa_app
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -11,7 +12,10 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 
 class QuestionDetailListAdapter(context: Context, private val mQustion: Question) : BaseAdapter() {
     companion object {
@@ -22,7 +26,8 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
     private var mLayoutInflater: LayoutInflater? = null
 
     init {
-        mLayoutInflater = context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+        mLayoutInflater =
+            context.getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
     }
 
     override fun getCount(): Int {
@@ -54,7 +59,8 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
 
         if (getItemViewType(position) == TYPE_QUESTION) {
             if (convertView == null) {
-                convertView = mLayoutInflater!!.inflate(R.layout.list_question_detail, parent, false)!!
+                convertView =
+                    mLayoutInflater!!.inflate(R.layout.list_question_detail, parent, false)!!
             }
             val body = mQustion.body
             val name = mQustion.name
@@ -67,7 +73,8 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
 
             val bytes = mQustion.imageBytes
             if (bytes.isNotEmpty()) {
-                val image = BitmapFactory.decodeByteArray(bytes, 0, bytes.size).copy(Bitmap.Config.ARGB_8888, true)
+                val image = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    .copy(Bitmap.Config.ARGB_8888, true)
                 val imageView = convertView.findViewById<View>(R.id.imageView) as ImageView
                 imageView.setImageBitmap(image)
             }
@@ -79,9 +86,30 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
                 val dataBaseReference = FirebaseDatabase.getInstance().reference
                 favbtn.setOnClickListener {
                     if (!mQustion.isFavorite) {
-                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite").child(mQustion.questionUid).setValue("test")
+                        val data = mutableMapOf<String, String>()
+                        data["questionUid"] = mQustion.questionUid
+                        data["genre"] = mQustion.genre.toString()
+                        // お気に入り質問特定用にジャンルを保存
+                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite")
+                            .push().setValue(data)
                     } else {
-                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite").child(mQustion.questionUid).removeValue()
+                        dataBaseReference.child(UsersPATH).child(user!!.uid).child("favorite")
+                            .orderByChild("questionUid").equalTo(mQustion.questionUid)
+                            .addListenerForSingleValueEvent(
+                                object : ValueEventListener {
+                                    override fun onCancelled(p0: DatabaseError) {
+                                    }
+
+                                    override fun onDataChange(dataSnapshot: DataSnapshot) {
+                                        Log.d("once", dataSnapshot.toString())
+                                        val map = dataSnapshot.getValue() as Map<String, String>
+                                        map.forEach {
+                                            dataBaseReference.child(UsersPATH).child(user!!.uid)
+                                                .child("favorite").child(it.key).removeValue()
+                                        }
+                                    }
+                                }
+                            )
                     }
                 }
                 if (mQustion.isFavorite) {
@@ -92,7 +120,6 @@ class QuestionDetailListAdapter(context: Context, private val mQustion: Question
             } else {
                 favbtn.visibility = View.GONE
             }
-
 
 
         } else {
