@@ -355,13 +355,17 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         // 1:趣味を既定の選択とする
         if (mGenre == 0) {
             onNavigationItemSelected(navigationView.menu.getItem(0))
+        } else if(mGenre == 999) {
+            onNavigationItemSelected(navigationView.menu.getItem(4))
         }
         // ログアウトしてきてるのを考慮してお気に入り遷移ボタン判定
         val menu = navigationView.menu
         val user = FirebaseAuth.getInstance().currentUser
+        var nav_fav = menu?.findItem(R.id.nav_fav)
         if (user == null) {
-            var nav_fav = menu?.findItem(R.id.nav_fav)
             nav_fav?.isVisible = false
+        } else {
+            nav_fav?.isVisible = true
         }
     }
 }
